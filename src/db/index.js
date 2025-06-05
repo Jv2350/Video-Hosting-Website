@@ -1,4 +1,4 @@
-import mongoose, { connect } from "mongoose";
+import mongoose from "mongoose";
 import { DB_NAME } from "../constant.js";
 
 const MONGO_URI = process.env.MONGO_URI;
