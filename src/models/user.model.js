@@ -8,7 +8,7 @@ const userSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Video",
     },
-    userName: {
+    username: {
       type: String,
       required: true,
       unique: true,
@@ -63,7 +63,7 @@ userSchema.methods.generateAccessToken = function () {
     {
       _id: this._id,
       email: this.email,
-      userName: this.userName,
+      username: this.username,
       fullName: this.fullName,
     },
     process.env.ACCESS_TOKEN_SECRET,
