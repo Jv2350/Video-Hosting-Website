@@ -169,12 +169,67 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
 
 const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
-  // TODO: remove video from playlist
+
+  if (!isValidObjectId(playlistId) || !isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid playlist or video ID");
+  }
+
+  const playlist = await Playlist.findById(playlistId);
+
+  if (!playlist) {
+    throw new ApiError(404, "Playlist not found");
+  }
+
+  // Check ownership
+  if (playlist.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(403, "Unauthorized to modify this playlist");
+  }
+
+  // Remove video from playlist
+  playlist.videos = playlist.videos.filter(
+    (video) => video.toString() !== videoId
+  );
+
+  await playlist.save();
+
+  const updatedPlaylist = await Playlist.findById(playlistId)
+    .populate("owner", "username fullName avatar")
+    .populate("videos", "title description thumbnail duration views owner");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updatedPlaylist,
+        "Video removed from playlist successfully"
+      )
+    );
 });
 
 const deletePlaylist = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
-  // TODO: delete playlist
+
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(400, "Invalid playlist ID");
+  }
+
+  const playlist = await Playlist.findById(playlistId);
+
+  if (!playlist) {
+    throw new ApiError(404, "Playlist not found");
+  }
+
+  // Check ownership
+  if (playlist.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(403, "Unauthorized to delete this playlist");
+  }
+
+  await Playlist.findByIdAndDelete(playlistId);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Playlist deleted successfully"));
 });
 
 const updatePlaylist = asyncHandler(async (req, res) => {
