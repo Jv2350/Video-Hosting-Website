@@ -103,11 +103,68 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 
 const getPlaylistById = asyncHandler(async (req, res) => {
   const { playlistId } = req.params;
-  //TODO: get playlist by id
+
+  if (!isValidObjectId(playlistId)) {
+    throw new ApiError(400, "Invalid playlist ID");
+  }
+
+  const playlist = await Playlist.findById(playlistId)
+    .populate("owner", "username fullName avatar")
+    .populate("videos", "title description thumbnail duration views owner");
+
+  if (!playlist) {
+    throw new ApiError(404, "Playlist not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, playlist, "Playlist fetched successfully"));
 });
 
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
   const { playlistId, videoId } = req.params;
+
+  if (!isValidObjectId(playlistId) || !isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid playlist or video ID");
+  }
+
+  const playlist = await Playlist.findById(playlistId);
+  const video = await Video.findById(videoId);
+
+  if (!playlist) {
+    throw new ApiError(404, "Playlist not found");
+  }
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  // Check ownership
+  if (playlist.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(403, "Unauthorized to modify this playlist");
+  }
+
+  // Check if video already exists in playlist
+  if (playlist.videos.includes(videoId)) {
+    throw new ApiError(400, "Video already exists in playlist");
+  }
+
+  // Add video to playlist
+  playlist.videos.push(videoId);
+  await playlist.save();
+
+  const updatedPlaylist = await Playlist.findById(playlistId)
+    .populate("owner", "username fullName avatar")
+    .populate("videos", "title description thumbnail duration views owner");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updatedPlaylist,
+        "Video added to playlist successfully"
+      )
+    );
 });
 
 const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
