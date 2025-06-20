@@ -73,16 +73,58 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
 const getVideoById = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  //TODO: get video by id
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid video ID");
+  }
+  const video = await Video.findById(videoId).populate(
+    "owner",
+    "username fullName avatar"
+  );
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+  // increment view count
+  video.views += 1;
+  await video.save();
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video fetched successfully"));
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
-  //TODO: update video details like title, description, thumbnail
+  const { title, description } = req.body;
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400, "Invalid video ID");
+  }
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(404, "Video not found");
+  }
+  if (video.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(403, "Unauthorized to update this video");
+  }
+  if (title?.trim()) video.title = title.trim();
+  if (description !== undefined) video.description = description.trim();
+  // Optionally handle thumbnail update if file provided
+  if (req.file) {
+    const uploadResult = await uploadOnCloudinary(req.file.path, "image");
+    if (uploadResult?.secure_url) {
+      video.thumbnail = uploadResult.secure_url;
+    }
+  }
+  await video.save();
+  const updatedVideo = await Video.findById(videoId).populate(
+    "owner",
+    "username fullName avatar"
+  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedVideo, "Video updated successfully"));
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
-  const { videoId } = req.params;
+  const { videoId } = req.paramsAdd;
   //TODO: delete video
 });
 
