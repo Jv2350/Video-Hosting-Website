@@ -5,6 +5,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { deleteFromCloudinary } from "../utils/CloudinaryDelete.js";
 
 // helper function to generate new access and refresh tokens for a user
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -274,7 +275,15 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar file is missing");
   }
 
-  // todo: delete old image
+  // delete old image if exists
+  const userBefore = await User.findById(req.user?._id);
+  if (userBefore && userBefore.avatar) {
+    // Extract publicId from the URL
+    const urlParts = userBefore.avatar.split("/");
+    const fileName = urlParts[urlParts.length - 1];
+    const [publicId] = fileName.split(".");
+    await deleteFromCloudinary(`avatars/${publicId}`); // adjust folder if needed
+  }
 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
 
